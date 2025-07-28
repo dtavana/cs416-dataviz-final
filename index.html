@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NBA Player Value Visualization</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+  </head>
+
+  <body>
+    <h1 id="scene-title"></h1>
+    <p id="narrative-text"></p>
+    <svg id="main-chart"></svg>
+    <div class="navigation">
+      <button id="prev-btn">Previous</button>
+      <button id="next-btn">Next</button>
+    </div>
+
+    <script>
+      const width = 960;
+      const height = 500;
+      const margin = 50;
+      const fadeDuration = 500;
+      const minMinutesPlayed = 250; // Filter for minutes played to rule out outliers
+      const svg = d3
+        .select("#main-chart")
+        .attr("width", width + 2 * margin)
+        .attr("height", height + 2 * margin)
+        .append("g")
+        .attr("transform", `translate(${margin}, ${margin})`);
+
+      // Tooltip for hovering over dots on scatterplot
+      const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+      // Variables to support different scenes
+      let scene = 0;
+      const sceneText = [
+        {
+          title: "An Overview of NBA Wealth (2022-23)",
+          text: "The vast majority of players earn under $10M, with few superstars earning over $40M.",
+        },
+        {
+          title: "Measuring On-Court Value (2022-23)",
+          text: "Player Efficiency Rating (PER) is an all-in-one metric that summarizes a player's on-court production. A PER of 15 is considered the league average.",
+        },
+        {
+          title: "The Big Picture: Salary vs. Performance (2022-23)",
+          text: "The lines show a 16 PER and $25M salary benchmark which creates four quadrants: Superstars (top-right), Bargains (top-left), Role Players (bottom-left), and Underperformers (bottom-right). Hover over dots to explore the relationship between salary and performance for a specific player.",
+        },
+      ];
+
+      // Data loading
+      let playerData = [];
+      d3.csv("data.csv").then((data) => {
+        // Parse data into numbers for neccesary columns
+        data.forEach((d) => {
+          d.Salary = +d.Salary;
+          d.PER = +d.PER;
+          d.Total_Minutes = +d["Total Minutes"];
+        });
+        // Filter out outlier players that did not play a threshold number of minutes
+        playerData = data.filter((d) => d.Total_Minutes >= minMinutesPlayed);
+        // Draw the current scene
+        drawScene();
+      });
+
+      function drawScene() {
+        // Disable/Enable buttons based on current scene
+        d3.select("#prev-btn").property("disabled", scene === 0);
+        d3.select("#next-btn").property(
+          "disabled",
+          scene === sceneText.length - 1
+        );
+        // Fade out the text
+        d3.select("#narrative-text")
+          .transition()
+          .duration(fadeDuration)
+          .style("opacity", 0);
+        d3.select("#scene-title")
+          .transition()
+          .duration(fadeDuration)
+          .style("opacity", 0);
+
+        // Fade out the scene content
+        svg
+          .selectAll("*")
+          .transition()
+          .duration(fadeDuration)
+          .style("opacity", 0)
+          .end()
+          .then(() => {
+            // Once the fade out completes, clear the SVG and draw the current scene
+            svg.selectAll("*").remove();
+
+            // Set the current scene text
+            d3.select("#scene-title").text(sceneText[scene].title);
+            d3.select("#narrative-text").text(sceneText[scene].text);
+
+            // Show the text again
+            d3.select("#scene-title")
+              .transition()
+              .duration(fadeDuration)
+              .style("opacity", 1);
+            return d3
+              .select("#narrative-text")
+              .transition()
+              .duration(fadeDuration)
+              .style("opacity", 1)
+              .end();
+          })
+          .then(() => {
+            // Draw the new scene
+            switch (scene) {
+              case 0:
+                drawSalaryScene();
+                break;
+              case 1:
+                drawPERScene();
+                break;
+              case 2:
+                drawFullScene();
+                break;
+            }
+          });
+      }
+
+      function drawSalaryScene() {
+        // Scale for x-axis
+        const xScale = d3
+          .scaleLinear()
+          .domain([0, d3.max(playerData, (d) => d.Salary)])
+          .range([0, width]);
+
+        // Draw x-axis
+        svg
+          .append("g")
+          .attr("transform", `translate(0, ${height})`)
+          .call(
+            d3
+              .axisBottom(xScale)
+              .tickFormat((d) => (d === 0 ? "$0" : `$${d3.format(".2s")(d)}`))
+          )
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Initialize parameters for histogram
+        const histogram = d3
+          .histogram()
+          .value((d) => d.Salary)
+          .domain(xScale.domain())
+          .thresholds(xScale.ticks(40));
+        const bins = histogram(playerData);
+
+        // Scale for y-axis
+        const yScale = d3
+          .scaleLinear()
+          .domain([0, d3.max(bins, (d) => d.length)])
+          .range([height, 0]);
+
+        // Draw y-axis
+        svg
+          .append("g")
+          .call(d3.axisLeft(yScale))
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw x-axis label
+        svg
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("transform", `translate(${width / 2}, ${height + margin - 10})`)
+          .text("2022-23 Salary (USD)")
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw y-axis label
+        svg
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 0 - margin + 20)
+          .attr("x", 0 - height / 2)
+          .text("Number of Players")
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw bins for histogram
+        svg
+          .selectAll("rect")
+          .data(bins)
+          .enter()
+          .append("rect")
+          .attr("x", (d) => xScale(d.x0))
+          .attr("y", (d) => yScale(d.length))
+          .attr("width", (d) => xScale(d.x1) - xScale(d.x0) - 1)
+          .attr("height", (d) => height - yScale(d.length))
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 0.75);
+      }
+
+      function drawPERScene() {
+        // Scale for x-axis
+        const xScale = d3
+          .scaleLinear()
+          .domain([
+            d3.min(playerData, (d) => d.PER) - 1,
+            d3.max(playerData, (d) => d.PER) + 1,
+          ]) // Add 1 to PER to add padding
+          .range([0, width]);
+
+        // Draw x-axis
+        svg
+          .append("g")
+          .attr("transform", `translate(0, ${height})`)
+          .call(d3.axisBottom(xScale))
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Initialize parameters for histogram
+        const histogram = d3
+          .histogram()
+          .value((d) => d.PER)
+          .domain(xScale.domain())
+          .thresholds(xScale.ticks(40));
+        const bins = histogram(playerData);
+
+        // Scale for y-axis
+        const yScale = d3
+          .scaleLinear()
+          .domain([0, d3.max(bins, (d) => d.length)])
+          .range([height, 0]);
+
+        // Draw y-axis
+        svg
+          .append("g")
+          .call(d3.axisLeft(yScale))
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw x-axis label
+        svg
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("transform", `translate(${width / 2}, ${height + margin - 10})`)
+          .text("Player Efficiency Rating (PER)")
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw y-axis label
+        svg
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 0 - margin + 20)
+          .attr("x", 0 - height / 2)
+          .text("Number of Players")
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw bins for histogram
+        svg
+          .selectAll("rect")
+          .data(bins)
+          .enter()
+          .append("rect")
+          .attr("x", (d) => xScale(d.x0))
+          .attr("y", (d) => yScale(d.length))
+          .attr("width", (d) => xScale(d.x1) - xScale(d.x0) - 1)
+          .attr("height", (d) => height - yScale(d.length))
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 0.75);
+      }
+
+      function drawFullScene() {
+        // Scale for x-axis
+        const xScale = d3
+          .scaleLinear()
+          .domain([0, d3.max(playerData, (d) => d.Salary)])
+          .range([0, width]);
+
+        // Scale for y-axis
+        const yScale = d3
+          .scaleLinear()
+          .domain([
+            d3.min(playerData, (d) => d.PER) - 1,
+            d3.max(playerData, (d) => d.PER) + 1,
+          ]) // Add 1 to PER to add padding
+          .range([height, 0]);
+
+        // Draw x-axis
+        svg
+          .append("g")
+          .attr("transform", `translate(0, ${height})`)
+          .call(
+            d3
+              .axisBottom(xScale)
+              .tickFormat((d) => (d === 0 ? "$0" : `$${d3.format(".2s")(d)}`))
+          )
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw y-axis
+        svg
+          .append("g")
+          .call(d3.axisLeft(yScale))
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw x-axis label
+        svg
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("transform", `translate(${width / 2}, ${height + margin - 10})`)
+          .text("2022-23 Salary (USD)")
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw y-axis label
+        svg
+          .append("text")
+          .attr("class", "axis-label")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 0 - margin + 20)
+          .attr("x", 0 - height / 2)
+          .text("Player Efficiency Rating (PER)")
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 1);
+
+        // Draw vertical quadrant line
+        const thresholdSalary = 25000000; // Use a cutoff of $25M as a cutoff for the vertical quadrant line
+        svg
+          .append("line")
+          .attr("class", "quadrant-line")
+          .attr("x1", xScale(thresholdSalary))
+          .attr("y1", 0)
+          .attr("x2", xScale(thresholdSalary))
+          .attr("y2", height)
+          .raise();
+
+        // Add horizontal quadrant line
+        const thresholdPER = 16; // Use a cutoff of 16 PER for the horizontal quadrant line
+        svg
+          .append("line")
+          .attr("class", "quadrant-line")
+          .attr("x1", 0)
+          .attr("y1", yScale(thresholdPER))
+          .attr("x2", width)
+          .attr("y2", yScale(thresholdPER))
+          .raise();
+
+        // Draw circles for scatter plot
+        svg
+          .append("g")
+          .selectAll("circle")
+          .data(playerData)
+          .enter()
+          .append("circle")
+          .attr("cx", (d) => xScale(d.Salary))
+          .attr("cy", (d) => yScale(d.PER))
+          .attr("r", 5)
+          // Event handlers for tooltips
+          .on("mouseover", function (event, d) {
+            tooltip.style("opacity", 1); // Make it appear on hover
+            d3.select(this).attr("r", 8); // Make circle bigger on hover
+          })
+          .on("mousemove", function (event, d) {
+            tooltip
+              .html(
+                `<div class="tooltip-player-name">${
+                  d.Player
+                }</div><br>Salary: $${d3.format(",.0f")(d.Salary)}<br>PER: ${
+                  d.PER
+                }`
+              )
+              .style("left", event.pageX + 15 + "px")
+              .style("top", event.pageY - 28 + "px");
+          })
+          .on("mouseout", function (event, d) {
+            tooltip.style("opacity", 0); // Make the tooltip go away when mouse off of a point
+            d3.select(this).attr("r", 5); // Revert radius
+          })
+          .attr("opacity", 0)
+          .transition()
+          .duration(fadeDuration)
+          .attr("opacity", 0.75);
+      }
+
+      // Triggers for buttons to move around
+      d3.select("#next-btn").on("click", () => {
+        if (scene < sceneText.length - 1) {
+          scene++;
+          drawScene();
+        }
+      });
+
+      d3.select("#prev-btn").on("click", () => {
+        if (scene > 0) {
+          scene--;
+          drawScene();
+        }
+      });
+    </script>
+  </body>
+</html>
