@@ -15,12 +15,14 @@
   </head>
 
   <body>
-    <h1 id="scene-title"></h1>
-    <p id="narrative-text"></p>
-    <svg id="main-chart"></svg>
-    <div class="navigation">
-      <button id="prev-btn">Previous</button>
-      <button id="next-btn">Next</button>
+    <div id="main-container">
+      <h1 id="scene-title"></h1>
+      <p id="narrative-text"></p>
+      <svg id="main-chart" viewBox="0 0 1060 600"></svg>
+      <div class="navigation">
+        <button id="prev-btn">Previous</button>
+        <button id="next-btn">Next</button>
+      </div>
     </div>
 
     <script>
@@ -171,7 +173,7 @@
         // Draw y-axis
         svg
           .append("g")
-          .call(d3.axisLeft(yScale))
+          .call(d3.axisLeft(yScale).tickPadding(-20))
           .attr("opacity", 0)
           .transition()
           .duration(fadeDuration)
@@ -254,7 +256,7 @@
         // Draw y-axis
         svg
           .append("g")
-          .call(d3.axisLeft(yScale))
+          .call(d3.axisLeft(yScale).tickPadding(-20))
           .attr("opacity", 0)
           .transition()
           .duration(fadeDuration)
@@ -333,7 +335,7 @@
         // Draw y-axis
         svg
           .append("g")
-          .call(d3.axisLeft(yScale))
+          .call(d3.axisLeft(yScale).tickPadding(-20))
           .attr("opacity", 0)
           .transition()
           .duration(fadeDuration)

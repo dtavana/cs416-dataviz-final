@@ -7,10 +7,19 @@ body {
   background-color: #f4f4f9;
 }
 
-#main-chart {
+#main-container {
+  text-align: center;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 90vw;
+  max-width: 1060px;
+}
+
+#main-chart {
+  width: 100%;
+  height: auto;
 }
 
 .quadrant-line {
