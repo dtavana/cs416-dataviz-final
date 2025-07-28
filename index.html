@@ -23,6 +23,8 @@
       const margin = 50;
       const fadeDuration = 500;
       const minMinutesPlayed = 250; // Filter for minutes played to rule out outliers
+      const thresholdSalary = 25000000; // Use a cutoff of $25M as a cutoff for the vertical quadrant line
+      const thresholdPER = 16; // Use a cutoff of 16 PER for the horizontal quadrant line
       const svg = d3
         .select("#main-chart")
         .attr("width", width + 2 * margin)
@@ -46,7 +48,7 @@
         },
         {
           title: "The Big Picture: Salary vs. Performance (2022-23)",
-          text: "The lines show a 16 PER and $25M salary benchmark which creates four quadrants: Superstars (top-right), Bargains (top-left), Role Players (bottom-left), and Underperformers (bottom-right). Hover over dots to explore the relationship between salary and performance for a specific player.",
+          text: "The lines show a 16 PER and $25M salary benchmark which creates four quadrants: Superstars (Blue), Bargains (Green), Role Players (Yellow), and Underperformers (Red). Hover over dots to explore the relationship between salary and performance for a specific player.",
         },
       ];
 
@@ -356,7 +358,7 @@
           .attr("opacity", 1);
 
         // Draw vertical quadrant line
-        const thresholdSalary = 25000000; // Use a cutoff of $25M as a cutoff for the vertical quadrant line
+
         svg
           .append("line")
           .attr("class", "quadrant-line")
@@ -367,7 +369,6 @@
           .raise();
 
         // Add horizontal quadrant line
-        const thresholdPER = 16; // Use a cutoff of 16 PER for the horizontal quadrant line
         svg
           .append("line")
           .attr("class", "quadrant-line")
@@ -377,6 +378,20 @@
           .attr("y2", yScale(thresholdPER))
           .raise();
 
+        function getCircleColor(d) {
+          if (d.Salary >= thresholdSalary && d.PER >= thresholdPER)
+            // Superstars
+            return "blue";
+          if (d.Salary < thresholdSalary && d.PER >= thresholdPER)
+            // Bargains
+            return "green";
+          if (d.Salary < thresholdSalary && d.PER < thresholdPER)
+            // Role Players
+            return "orange";
+          if (d.Salary >= thresholdSalary && d.PER < thresholdPER)
+            // Underperformers
+            return "red";
+        }
         // Draw circles for scatter plot
         svg
           .append("g")
@@ -387,6 +402,7 @@
           .attr("cx", (d) => xScale(d.Salary))
           .attr("cy", (d) => yScale(d.PER))
           .attr("r", 5)
+          .style("fill", (d) => getCircleColor(d))
           // Event handlers for tooltips
           .on("mouseover", function (event, d) {
             tooltip.style("opacity", 1); // Make it appear on hover
