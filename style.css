@@ -40,6 +40,15 @@ body {
   margin-bottom: 4px;
 }
 
+.annotation-note-label {
+  font-size: 12px;
+}
+
+.annotation-note-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+
 .dot {
   cursor: pointer;
 }

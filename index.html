@@ -6,6 +6,12 @@
     <title>NBA Player Value Visualization</title>
     <link rel="stylesheet" href="style.css" />
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"
+      integrity="sha512-iBAeBWWWFb8HqSBcrqcz98iIpuVH1la39dEYHtyQ/pGpeCQTQVvLJOWAuhv2Q7JSHp9k7hWA7sGxU3hHJe+tFg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
   </head>
 
   <body>
@@ -377,6 +383,92 @@
           .attr("x2", width)
           .attr("y2", yScale(thresholdPER))
           .raise();
+
+        // Draw annotations for most notable players in each quadrant
+        // Filter players by quadrant
+        const superstars = playerData.filter(
+          (d) => d.Salary >= thresholdSalary && d.PER >= thresholdPER
+        );
+        const bargains = playerData.filter(
+          (d) => d.Salary < thresholdSalary && d.PER >= thresholdPER
+        );
+        const underperformers = playerData.filter(
+          (d) => d.Salary >= thresholdSalary && d.PER < thresholdPER
+        );
+        const rolePlayers = playerData.filter(
+          (d) => d.Salary < thresholdSalary && d.PER < thresholdPER
+        );
+        // Pick most notable player for each quadrant
+        const superstar = superstars.reduce(
+          (max, p) => (p.PER > max.PER ? p : max), // Highest PER
+          superstars[0]
+        );
+        const bargain = bargains.reduce(
+          (max, p) => (p.PER > max.PER ? p : max), // Highest PER
+          bargains[0]
+        );
+        const underperformer = underperformers.reduce(
+          (min, p) => (p.PER < min.PER ? p : min), // Lowest PER
+          underperformers[0]
+        );
+        const rolePlayer = rolePlayers.reduce(
+          (max, p) => (p.PER > max.PER ? p : max), // Highest PER
+          rolePlayers[0]
+        );
+
+        // Draw the actual annotations
+        const annotations = [
+          {
+            note: {
+              title: superstar["Player"],
+              label: "Justified their contract with elite production",
+            },
+            x: xScale(superstar.Salary),
+            y: yScale(superstar.PER),
+            dx: -50,
+            dy: 50,
+          },
+          {
+            note: {
+              title: bargain["Player"],
+              label: "Provided elite production on a lower contract",
+            },
+            x: xScale(bargain.Salary),
+            y: yScale(bargain.PER),
+            dx: 50,
+            dy: -50,
+          },
+          {
+            note: {
+              title: rolePlayer["Player"],
+              label: "Was the best performer on a below-average salary",
+            },
+            x: xScale(rolePlayer.Salary),
+            y: yScale(rolePlayer.PER),
+            dx: -35,
+            dy: 140,
+          },
+          {
+            note: {
+              title: underperformer["Player"],
+              label: "Performed below-average while on a large contract",
+            },
+            x: xScale(underperformer.Salary),
+            y: yScale(underperformer.PER),
+            dx: 50,
+            dy: 45,
+          },
+        ];
+        const makeAnnotations = d3.annotation().annotations(annotations);
+        svg
+          .append("g")
+          .attr("class", "annotation-group")
+          .call(makeAnnotations)
+          .attr("opacity", 0)
+          .transition()
+          .duration(500)
+          .delay(500)
+          .attr("opacity", 1);
 
         function getCircleColor(d) {
           if (d.Salary >= thresholdSalary && d.PER >= thresholdPER)
