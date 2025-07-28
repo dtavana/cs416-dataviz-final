@@ -402,6 +402,7 @@
           .attr("cx", (d) => xScale(d.Salary))
           .attr("cy", (d) => yScale(d.PER))
           .attr("r", 5)
+          .attr("class", "dot")
           .style("fill", (d) => getCircleColor(d))
           // Event handlers for tooltips
           .on("mouseover", function (event, d) {

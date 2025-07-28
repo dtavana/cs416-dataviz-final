@@ -40,6 +40,10 @@ body {
   margin-bottom: 4px;
 }
 
+.dot {
+  cursor: pointer;
+}
+
 .axis-label {
   font-size: 14px;
   font-weight: normal;
